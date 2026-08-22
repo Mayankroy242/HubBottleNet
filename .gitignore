@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Conda
+.conda/
+
+# Local environments
+venv/
+.env/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test/cache
+.pytest_cache/
+
+# Generated results
+results/*
+
+# Keep results directory
+!results/.gitkeep

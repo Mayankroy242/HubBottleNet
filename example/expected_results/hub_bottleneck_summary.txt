@@ -1,0 +1,15 @@
+HubBottleNet - Hub-Bottleneck Analysis Summary
+==================================================
+
+Number of nodes: 22
+Average Degree: 8.1818
+Degree SD: 4.6867
+Hub threshold (AD + 2SD): 17.5553
+Hub criterion: Degree >= AD + 2SD
+Bottleneck criterion: Top 5% Betweenness Centrality
+Number of Hubs: 1
+Number of Bottlenecks: 2
+Number of Hub-Bottlenecks: 1
+
+Hub-Bottleneck genes:
+AKT1
