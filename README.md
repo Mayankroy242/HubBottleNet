@@ -138,8 +138,19 @@ Future versions may include:
 
 ## Citation
 
-Citation information will be added with the first software publication.
+If you use HubBottleNet in your research, please cite:
+
+Roy Chowdhury, M. (2026). HubBottleNet: A Python-based tool for
+hub-bottleneck analysis of biological networks. Version 0.1.
+GitHub. https://github.com/Mayankroy242/HubBottleNet
+
+A formal software/research publication citation will be added when
+available.
 
 ## License
 
-License information will be added before public release.
+HubBottleNet is released under the MIT License.
+
+See the `LICENSE` file for the complete license text.
+
+
