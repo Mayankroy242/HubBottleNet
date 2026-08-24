@@ -25,3 +25,9 @@ results/*
 
 # Keep results directory
 !results/.gitkeep
+
+# Local test input
+data/networkanalyzer_input.xlsx
+
+# Backup files
+src/input_parser_backup.py
