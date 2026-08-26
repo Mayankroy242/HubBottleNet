@@ -63,7 +63,7 @@ including:
 
 Clone the repository:
 
-    git clone https://github.com/YOUR_USERNAME/HubBottleNet.git
+    git clone https://github.com/mayankroy/HubBottleNet.git
 
     cd HubBottleNet
 
