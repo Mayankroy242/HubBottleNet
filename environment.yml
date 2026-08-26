@@ -10,4 +10,6 @@ dependencies:
   - matplotlib
   - scikit-learn
   - openpyxl
+  - xlrd
+  - pyxlsb
   - pytest

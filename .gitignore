@@ -31,3 +31,4 @@ data/networkanalyzer_input.xlsx
 
 # Backup files
 src/input_parser_backup.py
+data/networkanalyzer_input.csv

@@ -1,5 +1,6 @@
 import pandas as pd
 import re
+from pathlib import Path
 from difflib import SequenceMatcher
 
 
@@ -10,30 +11,39 @@ from difflib import SequenceMatcher
 COLUMN_ALIASES = {
 
     "node": [
-        "node",
-        "gene",
-        "gene name",
-        "gene symbol",
-        "protein",
-        "protein name",
-        "target",
-        "symbol"
+    "display name",
+    "gene",
+    "gene name",
+    "gene symbol",
+    "protein name",
+    "target",
+    "symbol",
+    "name",
+    "node",
+    "node name",
+    "node id"
+
     ],
 
     "degree": [
         "degree",
         "node degree",
+        "degree centrality",
         "connectivity",
         "number of neighbors",
-        "number of neighbours"
+        "number of neighbours",
+        "number of neighbors of a node",
+        "number of neighbours of a node"
     ],
 
     "bc": [
-        "bc",
-        "b c",
-        "betweenness",
-        "betweenness centrality",
-        "betweeness centrality"
+    "bc",
+    "b c",
+    "betweenness",
+    "betweenness centrality",
+    "betweeness centrality",
+    "betweennesscentrality"
+
     ],
 
     "cc": [
@@ -41,13 +51,15 @@ COLUMN_ALIASES = {
         "c c",
         "closeness",
         "closeness centrality",
-        "clossness centrality"
+        "clossness centrality",
+        "closenesscentrality"
     ],
 
     "clustering_coefficient": [
         "clustering",
         "clustering coefficient",
-        "clustering coefficients"
+        "clustering coefficients",
+        "clusteringcoefficient"
     ],
 
     "neighborhood_connectivity": [
@@ -55,7 +67,8 @@ COLUMN_ALIASES = {
         "neighbourhood connectivity",
         "neighborhood conectivity",
         "neighbourhood conectivity",
-        "connectivity"
+        "neighborhoodconnectivity",
+        "neighbourhoodconnectivity"
     ],
 
     "undirected_edges": [
@@ -63,7 +76,8 @@ COLUMN_ALIASES = {
         "no of undirected edge",
         "number of undirected edges",
         "undirected edges",
-        "undirected edge"
+        "undirected edge",
+        "number of undirected edge"
     ],
 
     "radiality": [
@@ -74,20 +88,30 @@ COLUMN_ALIASES = {
         "topological coefficient",
         "topological coefficients",
         "topological cefficient",
-        "topological cefficients"
-    ]
+        "topological cefficients",
+        "topologicalcoefficient"
+    ],
+
+    "protein_id": [
+    "stringdb database identifier",
+    "stringdbdatabase identifier",
+    "database identifier",
+    "protein id",
+    "protein identifier",
+    "ensembl protein id",
+    "ensembl protein identifier"
+    ],
 }
 
 
-# ---------------------------------------------------------
-# Column name normalization
+# ---------------------------------------------------------# Column name normalization
 # ---------------------------------------------------------
 
 def normalize_column_name(name):
     """
     Normalize column names to make matching tolerant
-    to capitalization, punctuation, underscores and
-    repeated spaces.
+    to capitalization, punctuation, underscores,
+    hyphens and repeated spaces.
     """
 
     name = str(name).strip().lower()
@@ -105,7 +129,7 @@ def normalize_column_name(name):
 
 
 def clean_column_names(df):
-    """Clean and normalize Excel/CSV column names."""
+    """Clean and normalize dataframe column names."""
 
     df = df.copy()
 
@@ -137,20 +161,21 @@ def similarity(a, b):
 
 def detect_columns(df, fuzzy_threshold=0.85):
     """
-    Detect NetworkAnalyzer columns.
+    Detect NetworkAnalyzer topology columns.
 
     Matching strategy:
 
     1. Exact alias matching
-    2. Known typo/variant matching
-    3. Fuzzy matching for highly similar names
+    2. Fuzzy matching
+    3. Known typo/variant matching
+
+    Unknown NetworkAnalyzer columns are ignored.
     """
 
     detected = {}
 
     for standard_name, aliases in COLUMN_ALIASES.items():
 
-        # Normalize aliases
         normalized_aliases = [
             normalize_column_name(alias)
             for alias in aliases
@@ -179,10 +204,20 @@ def detect_columns(df, fuzzy_threshold=0.85):
 
         elif len(exact_matches) > 1:
 
-            raise ValueError(
-                f"Multiple possible columns detected for "
+            # Prefer the first exact alias rather than
+            # immediately failing on redundant columns.
+            detected[standard_name] = exact_matches[0]
+
+            print(
+                f"⚠ Multiple possible columns for "
                 f"{standard_name}: {exact_matches}"
             )
+
+            print(
+                f"  → Using: {exact_matches[0]}"
+            )
+
+            continue
 
         # -------------------------------------------------
         # Fuzzy matching
@@ -203,26 +238,28 @@ def detect_columns(df, fuzzy_threshold=0.85):
                     (column, best_score)
                 )
 
-        # Sort by similarity
         candidates.sort(
             key=lambda x: x[1],
             reverse=True
         )
 
-        if len(candidates) >= 1:
+        if candidates:
 
             best_column, best_score = candidates[0]
 
-            # Check ambiguity
             if (
                 len(candidates) > 1
                 and candidates[1][1] >= best_score - 0.03
             ):
 
-                raise ValueError(
-                    f"Ambiguous column detection for "
-                    f"{standard_name}. Candidates: "
-                    f"{candidates}"
+                print(
+                    f"⚠ Ambiguous detection for "
+                    f"{standard_name}: {candidates}"
+                )
+
+                print(
+                    f"  → Using best match: "
+                    f"{best_column}"
                 )
 
             detected[standard_name] = best_column
@@ -241,10 +278,17 @@ def detect_columns(df, fuzzy_threshold=0.85):
 # ---------------------------------------------------------
 
 def standardize_dataset(df, detected):
-    """Create standardized topology dataframe."""
+    """
+    Create standardized topology dataframe.
+
+    The biological node name is retained as `node`.
+    The original STRING/Ensembl identifier is retained
+    as `protein_id` when available.
+    """
 
     standardized_df = pd.DataFrame()
 
+    # Preserve standardized columns
     for standard_name, original_name in detected.items():
 
         standardized_df[standard_name] = (
@@ -260,30 +304,140 @@ def standardize_dataset(df, detected):
 
 def load_file(file_path):
     """
-    Load Excel or CSV input automatically.
+    Load common network-analysis file formats automatically.
+
+    Supported:
+        .csv
+        .tsv
+        .txt
+        .xlsx
+        .xls
+        .xlsm
+        .xlsb
     """
 
-    file_path = str(file_path).lower()
+    path = Path(file_path)
 
-    if file_path.endswith(".xlsx"):
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Input file not found: {file_path}"
+        )
 
-        return pd.read_excel(file_path)
+    extension = path.suffix.lower()
 
-    elif file_path.endswith(".csv"):
+    print(
+        f"✓ Detected file format: "
+        f"{extension}"
+    )
 
-        return pd.read_csv(file_path)
+    # -----------------------------------------------------
+    # CSV
+    # -----------------------------------------------------
+
+    if extension == ".csv":
+
+        return pd.read_csv(
+            path,
+            sep=None,
+            engine="python"
+        )
+
+    # -----------------------------------------------------
+    # TSV
+    # -----------------------------------------------------
+
+    elif extension == ".tsv":
+
+        return pd.read_csv(
+            path,
+            sep="\t"
+        )
+
+    # -----------------------------------------------------
+    # TXT
+    # -----------------------------------------------------
+
+    elif extension == ".txt":
+
+        return pd.read_csv(
+            path,
+            sep=None,
+            engine="python"
+        )
+
+    # -----------------------------------------------------
+    # Excel XLSX / XLSM
+    # -----------------------------------------------------
+
+    elif extension in [".xlsx", ".xlsm"]:
+
+        return pd.read_excel(
+            path,
+            engine="openpyxl"
+        )
+
+    # -----------------------------------------------------
+    # Legacy Excel XLS
+    # -----------------------------------------------------
+
+    elif extension == ".xls":
+
+        try:
+
+            return pd.read_excel(
+                path,
+                engine="xlrd"
+            )
+
+        except ImportError:
+
+            raise ImportError(
+                "Reading .xls files requires xlrd. "
+                "Install it using:\n\n"
+                "pip install xlrd"
+            )
+
+    # -----------------------------------------------------
+    # Excel Binary XLSB
+    # -----------------------------------------------------
+
+    elif extension == ".xlsb":
+
+        try:
+
+            return pd.read_excel(
+                path,
+                engine="pyxlsb"
+            )
+
+        except ImportError:
+
+            raise ImportError(
+                "Reading .xlsb files requires pyxlsb. "
+                "Install it using:\n\n"
+                "pip install pyxlsb"
+            )
+
+    # -----------------------------------------------------
+    # Unsupported
+    # -----------------------------------------------------
 
     else:
 
         raise ValueError(
-            "Unsupported file format. "
-            "Please provide a .xlsx or .csv file."
+            f"Unsupported file format: {extension}\n"
+            "Supported formats: "
+            ".csv, .tsv, .txt, .xlsx, .xls, .xlsm, .xlsb"
         )
 
 
+# ---------------------------------------------------------
+# Main input pipeline
+# ---------------------------------------------------------
+
 def load_and_standardize(file_path):
     """
-    Load Excel/CSV file, detect topology parameters,
+    Load file, detect topology parameters,
     and return standardized dataset.
     """
 
@@ -293,9 +447,55 @@ def load_and_standardize(file_path):
         f"✓ Input file loaded: {file_path}"
     )
 
+    print(
+        f"✓ Raw columns detected: {len(df.columns)}"
+    )
+
+    # Preserve raw column names for debugging
+    original_columns = list(df.columns)
+
     df = clean_column_names(df)
 
+    print("\nDetected input columns:")
+
+    for column in df.columns:
+        print(f"  • {column}")
+
+    print("\nDetecting topology parameters...")
+
     detected = detect_columns(df)
+
+    # -----------------------------------------------------
+    # Check essential parameters
+    # -----------------------------------------------------
+
+    required = [
+        "node",
+        "degree",
+        "bc"
+    ]
+
+    missing_required = [
+        column
+        for column in required
+        if column not in detected
+    ]
+
+    if missing_required:
+
+        raise ValueError(
+            "\nCould not detect required topology "
+            "parameters:\n"
+            f"{missing_required}\n\n"
+            "Detected columns were:\n"
+            f"{list(df.columns)}\n\n"
+            "Please check the NetworkAnalyzer output "
+            "column names."
+        )
+
+    # -----------------------------------------------------
+    # Standardize
+    # -----------------------------------------------------
 
     standardized_df = standardize_dataset(
         df,
