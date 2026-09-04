@@ -5,11 +5,12 @@ from pathlib import Path
 from input_parser import load_and_standardize
 from validation import validate_dataset
 from hub_analysis import run_hb_analysis
+from advanced_analysis import run_advanced_analysis
 
 
-# ---------------------------------------------------------
+# =========================================================
 # Input file handling
-# ---------------------------------------------------------
+# =========================================================
 
 def find_default_input():
 
@@ -47,10 +48,15 @@ def find_default_input():
 
     if len(candidates) > 1:
 
-        print("Multiple NetworkAnalyzer input files found:")
+        print(
+            "Multiple NetworkAnalyzer input files found:"
+        )
 
         for file in candidates:
-            print(f"  • {file}")
+
+            print(
+                f"  • {file}"
+            )
 
         print(
             f"\nUsing: {candidates[0]}"
@@ -58,6 +64,10 @@ def find_default_input():
 
     return str(candidates[0])
 
+
+# =========================================================
+# Command-line arguments
+# =========================================================
 
 def parse_arguments():
 
@@ -82,21 +92,23 @@ def parse_arguments():
     return parser.parse_args()
 
 
-# ---------------------------------------------------------
-# Main
-# ---------------------------------------------------------
+# =========================================================
+# Main pipeline
+# =========================================================
 
 def main():
 
     args = parse_arguments()
 
     print("=" * 60)
-    print("HubBottleNet - Hub-Bottleneck Analysis")
+    print(
+        "HubBottleNet - Hub-Bottleneck Analysis"
+    )
     print("=" * 60)
 
-    # --------------------------------------------------
-    # Determine input file
-    # --------------------------------------------------
+    # -----------------------------------------------------
+    # 1. Determine input file
+    # -----------------------------------------------------
 
     if args.input:
 
@@ -110,11 +122,13 @@ def main():
         f"\nInput file: {input_file}"
     )
 
-    # --------------------------------------------------
-    # 1. Load and standardize input
-    # --------------------------------------------------
+    # -----------------------------------------------------
+    # 2. Load and standardize input
+    # -----------------------------------------------------
 
-    print("\n[1] Loading network data...")
+    print(
+        "\n[1] Loading network data..."
+    )
 
     df, detected_columns = load_and_standardize(
         input_file
@@ -129,11 +143,13 @@ def main():
         f"{len(detected_columns)}"
     )
 
-    # --------------------------------------------------
-    # 2. Validate dataset
-    # --------------------------------------------------
+    # -----------------------------------------------------
+    # 3. Validate dataset
+    # -----------------------------------------------------
 
-    print("\n[2] Validating dataset...")
+    print(
+        "\n[2] Validating dataset..."
+    )
 
     validation = validate_dataset(df)
 
@@ -158,15 +174,17 @@ def main():
         f"{validation['negative_values']}"
     )
 
-    # --------------------------------------------------
-    # 3. Run Hub-Bottleneck analysis
-    # --------------------------------------------------
+    # -----------------------------------------------------
+    # 4. Hub-Bottleneck analysis
+    # -----------------------------------------------------
 
     print(
         "\n[3] Running Hub-Bottleneck analysis..."
     )
 
-    results, ranked_hb, statistics = run_hb_analysis(df)
+    results, ranked_hb, statistics = run_hb_analysis(
+        df
+    )
 
     print(
         f"✓ Average Degree: "
@@ -198,14 +216,18 @@ def main():
         f"{statistics['number_of_hub_bottlenecks']}"
     )
 
-    # --------------------------------------------------
-    # 4. Save analysis results
-    # --------------------------------------------------
+    # -----------------------------------------------------
+    # 5. Create results directory
+    # -----------------------------------------------------
 
     os.makedirs(
         "results",
         exist_ok=True
     )
+
+    # -----------------------------------------------------
+    # 6. Save complete H-B results
+    # -----------------------------------------------------
 
     output_file = (
         "results/"
@@ -216,38 +238,43 @@ def main():
         output_file,
         index=False
     )
-    
-    ranked_output_file = (
-    "results/hub_bottleneck_ranked.csv"
-    )
-
-    ranked_hb.to_csv(
-    ranked_output_file,
-    index=False
-    )
-
-    print(
-    f"✓ Ranked H-B results saved to: "
-    f"{ranked_output_file}"
-    )
 
     print(
         f"✓ Results saved to: "
         f"{output_file}"
     )
 
-    # --------------------------------------------------
-    # 5. Identify Hub-Bottleneck genes
-    # --------------------------------------------------
+    # -----------------------------------------------------
+    # 7. Save ranked H-B results
+    # -----------------------------------------------------
+
+    ranked_output_file = (
+        "results/"
+        "hub_bottleneck_ranked.csv"
+    )
+
+    ranked_hb.to_csv(
+        ranked_output_file,
+        index=False
+    )
+
+    print(
+        f"✓ Ranked H-B results saved to: "
+        f"{ranked_output_file}"
+    )
+
+    # -----------------------------------------------------
+    # 8. Identify Hub-Bottleneck genes
+    # -----------------------------------------------------
 
     hb_genes = results.loc[
         results["hb_status"] == "Hub-Bottleneck",
         "node"
     ].tolist()
 
-    # --------------------------------------------------
-    # 6. Save analysis summary
-    # --------------------------------------------------
+    # -----------------------------------------------------
+    # 9. Save analysis summary
+    # -----------------------------------------------------
 
     summary_file = (
         "results/"
@@ -332,9 +359,9 @@ def main():
         f"{summary_file}"
     )
 
-    # --------------------------------------------------
-    # 7. Display Hub-Bottlenecks
-    # --------------------------------------------------
+    # -----------------------------------------------------
+    # 10. Display Hub-Bottlenecks
+    # -----------------------------------------------------
 
     print(
         "\nHub-Bottleneck genes:"
@@ -354,13 +381,13 @@ def main():
             "No Hub-Bottleneck genes identified."
         )
 
+    # -----------------------------------------------------
+    # 11. Display H-B ranking
+    # -----------------------------------------------------
 
-
-    # --------------------------------------------------
-    # 8. Display Hub-Bottleneck ranking
-    # --------------------------------------------------
-
-    print("\nHub-Bottleneck ranking:")
+    print(
+        "\nHub-Bottleneck ranking:"
+    )
 
     if not ranked_hb.empty:
 
@@ -380,6 +407,86 @@ def main():
             "No Hub-Bottleneck genes identified."
         )
 
+    # -----------------------------------------------------
+    # 12. Optional further network analysis
+    # -----------------------------------------------------
+
+    print(
+        "\nWould you like to perform further "
+        "network analysis? [y/n]"
+    )
+
+    choice = input(
+        "Enter choice: "
+    ).strip().lower()
+
+    if choice in ["y", "yes"]:
+
+        print(
+            "\n" + "=" * 60
+        )
+
+        print(
+            "HubBottleNet - Further Network Analysis"
+        )
+
+        print(
+            "=" * 60
+        )
+
+        print(
+            "\nRunning additional network analyses..."
+        )
+
+        advanced = run_advanced_analysis(
+            results,
+            ranked_hb,
+            results_directory="results"
+        )
+
+        print(
+            "\n✓ Network topology profiling completed."
+        )
+
+        print(
+            "✓ Hub-Bottleneck topology analysis completed."
+        )
+
+        print(
+            "✓ Network comparison analysis completed."
+        )
+
+        print(
+            "✓ Topology correlation analysis completed."
+        )
+
+        print(
+            "✓ Sensitivity analysis completed."
+        )
+
+        print(
+            "✓ Analysis figures generated."
+        )
+
+        print(
+            "\nResults saved to: results/"
+        )
+
+        print(
+            "Figures saved to: results/figures/"
+        )
+
+    else:
+
+        print(
+            "\nAnalysis completed."
+        )
+
+
+# =========================================================
+# Entry point
+# =========================================================
 
 if __name__ == "__main__":
+
     main()
